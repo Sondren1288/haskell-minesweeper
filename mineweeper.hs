@@ -62,17 +62,20 @@ standardAttribute = defAttr `withForeColor` white
 - Left for revealed state
 - Right for state of the game beneath the surface
 -}
-newGame :: Int -> Int -> Game
-newGame r c = (newShown r c, newHidden r c)
+--newGame :: Int -> Int -> Int -> StdGen -> Game
+--newGame r c bombs gen = (newShown r c, newHidden r c bombs gen)
 
 
 -- 
 newShown :: Int -> Int -> [[Int]]
 newShown rows columns = take rows (repeat (take columns (repeat (-3))))
 
-newHidden :: Int -> Int -> [[Int]]
-newHidden _ _ = calculateHidden boardTest
---newHidden rows columns = take rows (repeat (take columns (repeat (0))))
+newHidden :: Int -> Int -> Int -> StdGen -> StdGen -> [[Int]]
+newHidden r c bombs gen1 gen2 = calculateHidden $ insertBombsToGrid (generateBombs (newBlank r c) bombs gen1 gen2) (newBlank r c)
+
+newBlank :: Int -> Int -> [[Int]]
+newBlank rows columns = take rows (repeat (take columns (repeat (0))))
+
 
 calculateHidden :: [[Int]] -> [[Int]]
 calculateHidden board = [[if c == (-1) then c else countBombs board (x, y) | (c, x) <- (zip r [0..])] | (r, y) <- (zip board [0..])]
@@ -80,15 +83,15 @@ calculateHidden board = [[if c == (-1) then c else countBombs board (x, y) | (c,
 countBombs :: [[Int]] -> Pos -> Int
 countBombs board (0, 0) =   sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 r] | r <- (take 2 board)]
 countBombs board (0, y)
-    | y == length board =   sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 r] | r <- (drop ((length board)-2) board)]
+    | y == length board =   sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 r] | r <- (drop ((length board)-1) board)]
     | otherwise =           sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 r] | r <- (take 3 (drop (y-1) board))]
 countBombs board (x, 0)
     | x == length (head board) =    sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 (drop (x-1) r)] | r <- (take 2 board)]
     | otherwise =                   sum $ concat [[if c == (-1) then 1 else 0 | c <- take 3 (drop (x-1) r)] | r <- (take 2 board)]
 countBombs board (x, y) 
-    | x == length (head board) && y == length board = sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 (drop (x-1) r)] | r <- (drop ((length board)-2) board)]
+    | x == length (head board) && y == length board = sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 (drop (x-1) r)] | r <- (drop ((length board)-1) board)]
     | x == length (head board) =    sum $ concat [[if c == (-1) then 1 else 0 | c <- take 2 (drop (x-1) r)] | r <- (take 3 (drop (y-1) board))]
-    | y == length board =           sum $ concat [[if c == (-1) then 1 else 0 | c <- take 3 (drop (x-1) r)] | r <- (drop ((length board)-2) board)]
+    | y == length board =           sum $ concat [[if c == (-1) then 1 else 0 | c <- take 3 (drop (x-1) r)] | r <- (drop ((length board)-1) board)]
     | otherwise =                   sum $ concat [[if c == (-1) then 1 else 0 | c <- take 3 (drop (x-1) r)] | r <- (take 3 (drop (y-1) board))]
 
 
@@ -103,30 +106,35 @@ boardTest = [[-3,-1, 0,  0, 0,  0],
              [ 1, 2, 3,  4, 5,  6]]
 
 
+generateRandomNumbers :: Int -> Int -> Int -> StdGen -> [Int]
+generateRandomNumbers lower upper amount g = take amount (randomRs (lower, upper) g)
 
-{-
-generateRandomNumber :: Int -> Int 
-generateRandomNumber upper_bound = do
-    g <- newStdGen
-    integer <- head $ randomRs (0, upper_bound) g
-    return integer
--}
+generateBombs :: [[Int]] -> Int -> StdGen -> StdGen -> [Pos]
+generateBombs board nBombs gen1 gen2 = zip (generateRandomNumbers 0 ((length $ head board)-1) nBombs gen1) (generateRandomNumbers 0 ((length board)-1) nBombs gen2)
 
-{--
-generateBombs :: Int -> Int -> Int -> ([Int], [Int]) 
-generateBombs rows columns nBombs = do
-    g <- newStdGen
-    integerList <- zip (take nBombs (randomRs (0, rows) g)) (take nBombs (randomRs (0, columns) g))  
-    return integerList
---}
+insertBombsToGrid :: [Pos] -> [[Int]] -> [[Int]]
+insertBombsToGrid [] board = board
+insertBombsToGrid (x:xs) board = insertBombsToGrid xs (insertIntoGrid board x (-1))
+
+
+resetColor :: String
+resetColor = "\ESC[0m"
 
 
 formatInt :: Int -> String
 formatInt x
-    | x == -1 = "b"
-    | x == -2 = "f"
-    | x == -3 = '\2658':""
-    | x ==  0 = ' ':""
+    | x == -1 = "¤"  -- ++ resetColor
+    | x == -2 = "f"  -- ++ resetColor
+    | x == -3 = "#"  -- ++ resetColor
+    | x ==  0 = " "  -- ++ resetColor
+    | x ==  1 = "1"  -- "\ESC[94;40m" ++ "1" ++ resetColor
+    | x ==  2 = "2"  -- "\ESC[32;40m" ++ "2" ++ resetColor
+    | x ==  3 = "3"  -- "\ESC[91;40m" ++ "3" ++ resetColor
+    | x ==  4 = "4"  -- "\ESC[34;40m" ++ "4" ++ resetColor
+    | x ==  5 = "5"  -- "\ESC[33;40m" ++ "5" ++ resetColor
+    | x ==  6 = "6"  -- "\ESC[36;40m" ++ "6" ++ resetColor
+    | x ==  7 = "7"  -- "\ESC[34;40m" ++ "7" ++ resetColor
+    | x ==  8 = "8"  -- "\ESC[90;40m" ++ "8" ++ resetColor
     | otherwise = show x 
 
 
@@ -175,8 +183,10 @@ checkTile (shown, hidden) (x, y)
 
 insertMutlipleToGrid :: [Pos] -> Game -> Game
 insertMutlipleToGrid [] game = game
-insertMutlipleToGrid (x:xs) (shown, hidden) = insertMutlipleToGrid xs (insertIntoGrid shown x (getValue hidden x), hidden)
-
+insertMutlipleToGrid (x:xs) (shown, hidden) = 
+    if getValue shown x == -3 
+        then insertMutlipleToGrid xs (insertIntoGrid shown x (getValue hidden x), hidden)
+    else insertMutlipleToGrid xs (shown, hidden)
 
 -- Finds all 0-es. The return-list needs to be run through again so that it finds all non-zero
 -- nub removes all duplicate elements of the list
@@ -217,6 +227,8 @@ getValidNeighboursCross board (x, y)
 insertIntoGrid :: [[Int]] -> Pos -> Int -> [[Int]]
 insertIntoGrid board (x, y) val = take (y) board ++ [take x (last $ take (y+1) board) ++ [val] ++ drop (x+1) (last $ take (y + 1) board)] ++ drop (y+1) board
 
+
+
 revealBoard :: Game -> Pos -> Game
 revealBoard (shown, hidden) (x, y) =
     case (translateCoordinate (x, y) (shown, hidden)) of 
@@ -233,16 +245,22 @@ plantFlag (shown, hidden) (x, y) =
 checkTileFlag :: Game -> Pos -> Game
 checkTileFlag (shown, hidden) (x, y)
     | getValue shown (x, y) == -3 = (insertIntoGrid shown (x, y) (-2), hidden)
+    | getValue shown (x, y) == -2 = (insertIntoGrid shown (x, y) (-3), hidden)
     | otherwise = (shown, hidden)
 
 hasOneEqual :: (Eq a) => [a] -> [a] -> [Bool]
 hasOneEqual list1 list2 = [elem x list2 | x <- list1]
 
 
+-- TODO Win game
+-- TODO Lose game
+-- TODO Better Header
+
 mainLoop :: Event -> Vty -> Game -> Pos -> IO ()
 mainLoop (EvKey key m) vty (shown, hidden) (x, y) = do
     if key == KChar 'q' then do
         shutdown vty
+        --print (shown, hidden)
         exitWith (ExitSuccess)
     else do
         renderBoard (shown, hidden) vty (show key)
@@ -298,13 +316,13 @@ parser (EvKey x m) vty =
 
 
 
-makeBoardText :: String -> String -> Game
-makeBoardText rows columns = newGame (read (rows) :: Int) (read (columns) :: Int) 
+--makeBoardText :: String -> String -> Game
+--makeBoardText rows columns = newGame (read (rows) :: Int) (read (columns) :: Int) 
 
 
-rowsColsDigit :: String -> String -> Bool
-rowsColsDigit rows columns
-    | all (==True) (map (all (isDigit)) [rows, columns]) = True
+rowsColsDigit :: String -> String -> String -> Bool
+rowsColsDigit rows columns bombs
+    | all (==True) (map (all (isDigit)) [rows, columns, bombs]) = True
     | otherwise = False
 
 
@@ -317,56 +335,48 @@ main  = do
     rows <- getLine
     putStrLn "columns: "
     columns <- getLine
+    putStrLn "Percentage bombs: "
+    bombs <- getLine
 
-    if not (rowsColsDigit (unwords $ words rows) (unwords $ words columns))
+    if not (rowsColsDigit (unwords $ words rows) (unwords $ words columns) (unwords $ words bombs))
         then do
             putStrLn "Row and columns need to be numbers"
             exitWith (ExitFailure 1)
     else do
-            let board = (newShown 6 6, calculateHidden boardTest)  -- (newBoard 6 6,boardTest) --makeBoardText rows columns
-            print board
+            let   -- (newBoard 6 6,boardTest) --makeBoardText rows columns
+                r = read rows :: Int
+                c = read columns :: Int
+                b = read bombs :: Int
+                total_bombs = if (r * c * b) `div` 100 > 0 then (r * c * b) `div` 100  else 0
+                board = (newShown r c, newShown r c)
 
             cfg <- standardIOConfig
             vty <- mkVty cfg
 
+            -- Enables Mouse support
             let output = outputIface vty
-            --putStrLn $ show output
             setMode output Mouse True
-            -- TODO -initiate board here-
             
+            -- Renders dummy-board for first click
             renderBoard board vty ("Top")
-
+            -- Get first click 
             event <- nextEvent vty
-            mainLoop event vty board (3, 3)
+            dummyLoop r c total_bombs vty board event
+            --mainLoop event vty board (3, 3)
             shutdown vty
 
-    --mainLoop (nextEvent vty) vty
-    {-
-    cfg <- standardIOConfig --customIOConfig
-    vty <- mkVty cfg
-    let 
-        temp = string (defAttr `withForeColor` white) "Apple bottom jeans"
-        pic = picForImage temp
-    update vty pic
-    e <- nextEvent vty
-    mainLoop e
-    -- print ("Last event was: " ++ show e)
-    -}
 
-    -- Test field
-    {-let 
-        temp = string (defAttr `withForeColor` white) "Apple bottom jeans"
-        pic = picForImage temp
-    update vty pic
+dummyLoop r c total_bombs vty board (EvMouseDown x_mouse y_mouse button modifiers) = do
+    case (translateCoordinate (x_mouse, y_mouse) board) of 
+        Just (x1, y1) -> do
+            gen1 <- newStdGen
+            gen2 <- newStdGen
+            let new_hidden = calculateHidden $ insertIntoGrid (newHidden r c total_bombs gen1 gen2) (x1, y1) 0
+            e <- nextEvent vty
+            mainLoop e vty (fst board, new_hidden) (0, 0)
+        Nothing -> do
+            e <- nextEvent vty
+            dummyLoop r c total_bombs vty board e
+dummyLoop r c total_bombs vty board event = do
     e <- nextEvent vty
-    let 
-        temp = string standardAttribute (show e)
-        pic = picForImage temp
-    update vty pic
-    e <- nextEvent vty
-    let
-        temp = string standardAttribute (show $ type e)
-        pic = picForImage temp
-    update vty pic
-    e <- nextEvent vty-}
-
+    dummyLoop r c total_bombs vty board event
