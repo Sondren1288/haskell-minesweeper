@@ -177,7 +177,7 @@ checkTile (shown, hidden) (x, y)
         if getValue hidden (x, y) == 0 
                             --  [ insertIntoGrid | pos <- revelaQueue [] [(x, y)] (shown, hidden)]]
             then insertMutlipleToGrid ((revealQueue [] [(x, y)] (shown, hidden)) ++ (nub $ concat $ map (checkBorderTile (shown, hidden) [1..9]) (revealQueue [] [(x, y)] (shown, hidden)))) (shown, hidden)  -- (insertIntoGrid shown (x, y) (getValue hidden (x, y)), hidden) -- ((take (x)) . (last $ take (y+1))) shown ++ getValue hidden (x, y) ++ 
-        else 
+        else
             (insertIntoGrid shown (x, y) (getValue hidden (x, y)), hidden)
     | otherwise = (shown, hidden)
 
