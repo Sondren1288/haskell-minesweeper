@@ -4,9 +4,8 @@ import System.Exit
 import Graphics.Vty
 import Data.List
 import System.Random
-
+-- lacking critical imports here for program to function
 -- GetCursorPosition returns cursor position
-
 
 -- For easier type declarations
 type Game = ([[Int]], [[Int]])
