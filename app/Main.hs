@@ -1,7 +1,9 @@
+module Main where
 import Data.Char
 import System.Exit
 -- import System.Console.ANSI
 import Graphics.Vty
+import Graphics.Vty.CrossPlatform
 import Data.List
 import System.Random
 
@@ -350,8 +352,7 @@ main  = do
                 total_bombs = if (r * c * b) `div` 100 > 0 then (r * c * b) `div` 100  else 0
                 board = (newShown r c, newShown r c)
 
-            cfg <- standardIOConfig
-            vty <- mkVty cfg
+            vty <- mkVty defaultConfig
 
             -- Enables Mouse support
             let output = outputIface vty
